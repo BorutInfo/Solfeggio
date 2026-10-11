@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<!-- RAZLICICA-2026-10-11-merilnik -->
+<html lang="sl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Preizkus visine glasu</title>
+<style>
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: #11161c;
+    color: #e8edf2;
+    font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    padding: 16px 16px 48px 16px;
+    padding-top: calc(16px + env(safe-area-inset-top, 0px));
+    padding-bottom: calc(48px + env(safe-area-inset-bottom, 0px));
+    max-width: 640px;
+    margin: 0 auto;
+  }
+  h1 {
+    font-size: 19px;
+    font-weight: 600;
+    margin: 0 0 4px 0;
+  }
+  .podnaslov {
+    font-size: 14px;
+    color: #8fa0b0;
+    margin: 0 0 20px 0;
+    line-height: 1.45;
+  }
+  button {
+    font-family: inherit;
+    font-size: 18px;
+    font-weight: 600;
+    color: #11161c;
+    background: #7fd1a6;
+    border: 0;
+    border-radius: 10px;
+    padding: 16px 20px;
+    width: 100%;
+    margin: 0 0 16px 0;
+    -webkit-appearance: none;
+    cursor: pointer;
+  }
+  button:disabled {
+    background: #3a4450;
+    color: #8fa0b0;
+  }
+  button.drugi {
+    background: #5aa7e0;
+  }
+  .skatla {
+    background: #182027;
+    border-radius: 12px;
+    padding: 16px;
+    margin: 0 0 16px 0;
+  }
+  .nota {
+    font-size: 72px;
+    font-weight: 300;
+    line-height: 1;
+    text-align: center;
+    margin: 4px 0 2px 0;
+    letter-spacing: -1px;
+  }
+  .centi {
+    font-size: 40px;
+    font-weight: 300;
+    text-align: center;
+    line-height: 1.1;
+    margin: 0 0 10px 0;
+  }
+  .previsoko { color: #f0a35e; }
+  .prenizko { color: #6fb6e8; }
+  .vsredini { color: #7fd1a6; }
+  .tracnica {
+    position: relative;
+    height: 14px;
+    background: #222c35;
+    border-radius: 7px;
+    margin: 0 0 14px 0;
+    overflow: hidden;
+  }
+  .sredina {
+    position: absolute;
+    left: 50%;
+    top: 0;
+    width: 2px;
+    height: 14px;
+    margin-left: -1px;
+    background: #4b5a68;
+  }
+  .kazalec {
+    position: absolute;
+    top: 2px;
+    width: 10px;
+    height: 10px;
+    margin-left: -5px;
+    border-radius: 5px;
+    background: #7fd1a6;
+    left: 50%;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 15px;
+  }
+  td {
+    padding: 6px 0;
+    border-bottom: 1px solid #222c35;
+    vertical-align: top;
+  }
+  td.oznaka {
+    color: #8fa0b0;
+    width: 58%;
+  }
+  td.vrednost {
+    text-align: right;
+    font-weight: 600;
+  }
+  tr:last-child td { border-bottom: 0; }
+  .naslovek {
+    font-size: 15px;
+    font-weight: 600;
+    margin: 0 0 10px 0;
+    color: #c8d4df;
+  }
+  .sporocilo {
+    font-size: 15px;
+    line-height: 1.5;
+    color: #f0a35e;
+    margin: 0 0 16px 0;
+  }
+  .dnevnik {
+    font-size: 13px;
+    line-height: 1.6;
+    color: #8fa0b0;
+    white-space: pre-wrap;
+    word-break: break-word;
+    margin: 0;
+  }
+  .drobno {
+    font-size: 13px;
+    color: #76899a;
+    line-height: 1.5;
+    margin: 10px 0 0 0;
+  }
+</style>
+</head>
+<body>
+
+<h1>Preizkus visine glasu</h1>
+<p class="podnaslov">Ta stran nic ne popravlja in nic ne uci. Samo pokaze, kaj vas telefon v resnici slisi, ko pojete.</p>
+
+<div id="opozorilo" class="sporocilo" style="display:none"></div>
+
+<button id="gumbVklop">Vklopi mikrofon</button>
+
+<div class="skatla">
+  <div class="nota" id="prikazNota">&mdash;</div>
+  <div class="centi" id="prikazCenti">&nbsp;</div>
+  <div class="tracnica">
+    <div class="sredina"></div>
+    <div class="kazalec" id="kazalec"></div>
+  </div>
+  <table>
+    <tr><td class="oznaka">Frekvenca</td><td class="vrednost" id="prikazHz">&mdash;</td></tr>
+    <tr><td class="oznaka">Meritev na sekundo</td><td class="vrednost" id="prikazHitrost">&mdash;</td></tr>
+    <tr><td class="oznaka">Jakost signala</td><td class="vrednost" id="prikazJakost">&mdash;</td></tr>
+  </table>
+</div>
+
+<button id="gumbTest" class="drugi" disabled>Test: drzite eno noto 5 sekund</button>
+
+<div class="skatla">
+  <p class="naslovek" id="naslovIzid">Izid testa</p>
+  <table>
+    <tr><td class="oznaka">Stanje</td><td class="vrednost" id="izidStanje">se ni bilo testa</td></tr>
+    <tr><td class="oznaka">Uspesnih meritev</td><td class="vrednost" id="izidStevilo">&mdash;</td></tr>
+    <tr><td class="oznaka">Neuspesnih (pretiho)</td><td class="vrednost" id="izidPrazne">&mdash;</td></tr>
+    <tr><td class="oznaka">Meritev na sekundo</td><td class="vrednost" id="izidHitrost">&mdash;</td></tr>
+    <tr><td class="oznaka">Srednja nota</td><td class="vrednost" id="izidNota">&mdash;</td></tr>
+    <tr><td class="oznaka">Srednja frekvenca</td><td class="vrednost" id="izidHz">&mdash;</td></tr>
+    <tr><td class="oznaka">Najnizja meritev</td><td class="vrednost" id="izidMin">&mdash;</td></tr>
+    <tr><td class="oznaka">Najvisja meritev</td><td class="vrednost" id="izidMax">&mdash;</td></tr>
+    <tr><td class="oznaka">Razpon</td><td class="vrednost" id="izidRazpon">&mdash;</td></tr>
+    <tr><td class="oznaka">Polovica meritev znotraj</td><td class="vrednost" id="izidPolovica">&mdash;</td></tr>
+    <tr><td class="oznaka">Oktavnih skokov</td><td class="vrednost" id="izidSkoki">&mdash;</td></tr>
+  </table>
+  <p class="drobno">Razpon pove, koliko centov dopuscanja bi aplikacija potrebovala, da bi vas drzano noto ves cas priznala.</p>
+</div>
+
+<div class="skatla">
+  <p class="naslovek">Zadnjih 12 meritev</p>
+  <p class="dnevnik" id="dnevnik">&mdash;</p>
+</div>
+
+<div class="skatla">
+  <p class="naslovek">Naprava</p>
+  <table>
+    <tr><td class="oznaka">Vzorcna frekvenca</td><td class="vrednost" id="napVzorec">&mdash;</td></tr>
+    <tr><td class="oznaka">Odprava odmeva</td><td class="vrednost" id="napOdmev">&mdash;</td></tr>
+    <tr><td class="oznaka">Samodejna jakost</td><td class="vrednost" id="napJakost">&mdash;</td></tr>
+    <tr><td class="oznaka">Odprava suma</td><td class="vrednost" id="napSum">&mdash;</td></tr>
+    <tr><td class="oznaka">Natancno branje vala</td><td class="vrednost" id="napFloat">&mdash;</td></tr>
+  </table>
+  <p class="drobno">Ce je odprava odmeva ali samodejna jakost vklopljena, naprava zvok spreminja in meritev je manj zanesljiva.</p>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var IMENA = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "H"];
+  var VELIKOST = 2048;
+
+  var kontekst = null;
+  var analizator = null;
+  var polje = null;
+  var poljeBajt = null;
+  var floatPodprt = false;
+  var tece = false;
+
+  var stevecMeritev = 0;
+  var casStevca = 0;
+  var hitrost = 0;
+
+  var testTece = false;
+  var testKonec = 0;
+  var testMeritve = [];
+  var testPrazne = 0;
+  var testZacetek = 0;
+
+  var zgodovina = [];
+
+  function el(id) { return document.getElementById(id); }
+
+  function log2(x) { return Math.log(x) / Math.LN2; }
+
+  function frekvencaVNoto(f) {
+    return 69 + 12 * log2(f / 440);
+  }
+
+  function notaVFrekvenco(n) {
+    return 440 * Math.pow(2, (n - 69) / 12);
+  }
+
+  function imeNote(n) {
+    var zaokrozen = Math.round(n);
+    var razred = ((zaokrozen % 12) + 12) % 12;
+    var oktava = Math.floor(zaokrozen / 12) - 1;
+    return IMENA[razred] + oktava;
+  }
+
+  function centiOdNote(f, n) {
+    return 1200 * log2(f / notaVFrekvenco(Math.round(n)));
+  }
+
+  // Avtokorelacija po javno dostopnem postopku Chrisa Wilsona (licenca MIT).
+  function najdiVisino(buf, vzorcnaFrekvenca) {
+    var velikost = buf.length;
+    var vsota = 0;
+    var i, j;
+    for (i = 0; i < velikost; i++) {
+      vsota += buf[i] * buf[i];
+    }
+    var rms = Math.sqrt(vsota / velikost);
+    if (rms < 0.01) { return { hz: -1, rms: rms }; }
+
+    var r1 = 0;
+    var r2 = velikost - 1;
+    var prag = 0.2;
+    for (i = 0; i < velikost / 2; i++) {
+      if (Math.abs(buf[i]) < prag) { r1 = i; break; }
+    }
+    for (i = 1; i < velikost / 2; i++) {
+      if (Math.abs(buf[velikost - i]) < prag) { r2 = velikost - i; break; }
+    }
+
+    var odrezan = buf.slice(r1, r2);
+    var n = odrezan.length;
+    if (n < 64) { return { hz: -1, rms: rms }; }
+
+    var c = new Array(n);
+    for (i = 0; i < n; i++) { c[i] = 0; }
+    for (i = 0; i < n; i++) {
+      for (j = 0; j < n - i; j++) {
+        c[i] = c[i] + odrezan[j] * odrezan[j + i];
+      }
+    }
+
+    var d = 0;
+    while (d < n - 1 && c[d] > c[d + 1]) { d++; }
+
+    var najvecja = -1;
+    var mesto = -1;
+    for (i = d; i < n; i++) {
+      if (c[i] > najvecja) { najvecja = c[i]; mesto = i; }
+    }
+    if (mesto <= 0 || mesto >= n - 1) { return { hz: -1, rms: rms }; }
+
+    var t0 = mesto;
+    var x1 = c[t0 - 1];
+    var x2 = c[t0];
+    var x3 = c[t0 + 1];
+    var a = (x1 + x3 - 2 * x2) / 2;
+    var b = (x3 - x1) / 2;
+    if (a) { t0 = t0 - b / (2 * a); }
+
+    var hz = vzorcnaFrekvenca / t0;
+    if (hz < 50 || hz > 2000) { return { hz: -1, rms: rms }; }
+    return { hz: hz, rms: rms };
+  }
+
+  function mediana(sez) {
+    var k = sez.slice(0);
+    k.sort(function (a, b) { return a - b; });
+    var s = k.length;
+    if (s === 0) { return 0; }
+    if (s % 2 === 1) { return k[(s - 1) / 2]; }
+    return (k[s / 2 - 1] + k[s / 2]) / 2;
+  }
+
+  function dveDecimalki(x) { return Math.round(x * 100) / 100; }
+
+  function posodobiPrikaz(hz, rms) {
+    if (hz < 0) {
+      el("prikazNota").innerHTML = "&mdash;";
+      el("prikazCenti").innerHTML = "&nbsp;";
+      el("prikazCenti").className = "centi";
+      el("prikazHz").innerHTML = "pretiho";
+      el("kazalec").style.left = "50%";
+    } else {
+      var n = frekvencaVNoto(hz);
+      var centi = centiOdNote(hz, n);
+      var zaokrozeni = Math.round(centi);
+      el("prikazNota").innerHTML = imeNote(n);
+      var besedilo;
+      var razred;
+      if (zaokrozeni > 4) {
+        besedilo = "&#9650; previsoko " + zaokrozeni + " c";
+        razred = "centi previsoko";
+      } else if (zaokrozeni < -4) {
+        besedilo = "&#9660; prenizko " + Math.abs(zaokrozeni) + " c";
+        razred = "centi prenizko";
+      } else {
+        besedilo = "tocno (" + zaokrozeni + " c)";
+        razred = "centi vsredini";
+      }
+      el("prikazCenti").innerHTML = besedilo;
+      el("prikazCenti").className = razred;
+      el("prikazHz").innerHTML = dveDecimalki(hz) + " Hz";
+      var odstotek = 50 + (Math.max(-50, Math.min(50, centi)) / 50) * 48;
+      el("kazalec").style.left = odstotek + "%";
+    }
+    el("prikazJakost").innerHTML = Math.round(rms * 1000) / 1000;
+    el("prikazHitrost").innerHTML = hitrost > 0 ? hitrost : "&mdash;";
+  }
+
+  function posodobiDnevnik(hz) {
+    var vrstica;
+    if (hz < 0) {
+      vrstica = "pretiho";
+    } else {
+      var n = frekvencaVNoto(hz);
+      vrstica = dveDecimalki(hz) + " Hz   " + imeNote(n) + "   " + Math.round(centiOdNote(hz, n)) + " c";
+    }
+    zgodovina.unshift(vrstica);
+    if (zgodovina.length > 12) { zgodovina.pop(); }
+    el("dnevnik").innerHTML = zgodovina.join("\n");
+  }
+
+  function koncajTest() {
+    testTece = false;
+    el("gumbTest").disabled = false;
+    el("gumbTest").innerHTML = "Test: drzite eno noto 5 sekund";
+
+    var trajanje = (Date.now() - testZacetek) / 1000;
+    el("izidPrazne").innerHTML = testPrazne;
+    el("izidHitrost").innerHTML = Math.round((testMeritve.length + testPrazne) / trajanje);
+
+    if (testMeritve.length < 5) {
+      el("izidStanje").innerHTML = "premalo meritev";
+      el("izidStevilo").innerHTML = testMeritve.length;
+      el("izidNota").innerHTML = "&mdash;";
+      el("izidHz").innerHTML = "&mdash;";
+      el("izidMin").innerHTML = "&mdash;";
+      el("izidMax").innerHTML = "&mdash;";
+      el("izidRazpon").innerHTML = "&mdash;";
+      el("izidPolovica").innerHTML = "&mdash;";
+      el("izidSkoki").innerHTML = "&mdash;";
+      return;
+    }
+
+    var srednja = mediana(testMeritve);
+    var srednjaNota = frekvencaVNoto(srednja);
+    var i;
+    var centi = [];
+    var skoki = 0;
+    for (i = 0; i < testMeritve.length; i++) {
+      var c = 1200 * log2(testMeritve[i] / srednja);
+      if (Math.abs(c) > 600) { skoki++; } else { centi.push(c); }
+    }
+    if (centi.length === 0) { centi = [0]; }
+
+    var najmanj = centi[0];
+    var najvec = centi[0];
+    for (i = 1; i < centi.length; i++) {
+      if (centi[i] < najmanj) { najmanj = centi[i]; }
+      if (centi[i] > najvec) { najvec = centi[i]; }
+    }
+
+    var absolutni = [];
+    for (i = 0; i < centi.length; i++) { absolutni.push(Math.abs(centi[i])); }
+    var polovica = mediana(absolutni);
+
+    el("izidStanje").innerHTML = "koncano";
+    el("izidStevilo").innerHTML = testMeritve.length;
+    el("izidNota").innerHTML = imeNote(srednjaNota);
+    el("izidHz").innerHTML = dveDecimalki(srednja) + " Hz";
+    el("izidMin").innerHTML = Math.round(najmanj) + " c";
+    el("izidMax").innerHTML = "+" + Math.round(najvec) + " c";
+    el("izidRazpon").innerHTML = Math.round(najvec - najmanj) + " c";
+    el("izidPolovica").innerHTML = "&plusmn; " + Math.round(polovica) + " c";
+    el("izidSkoki").innerHTML = skoki;
+  }
+
+  function korak() {
+    if (!tece) { return; }
+
+    if (floatPodprt) {
+      analizator.getFloatTimeDomainData(polje);
+    } else {
+      analizator.getByteTimeDomainData(poljeBajt);
+      for (var k = 0; k < VELIKOST; k++) {
+        polje[k] = (poljeBajt[k] - 128) / 128;
+      }
+    }
+
+    var izid = najdiVisino(polje, kontekst.sampleRate);
+
+    stevecMeritev++;
+    var zdaj = Date.now();
+    if (zdaj - casStevca >= 1000) {
+      hitrost = Math.round(stevecMeritev * 1000 / (zdaj - casStevca));
+      stevecMeritev = 0;
+      casStevca = zdaj;
+    }
+
+    posodobiPrikaz(izid.hz, izid.rms);
+    posodobiDnevnik(izid.hz);
+
+    if (testTece) {
+      if (izid.hz < 0) { testPrazne++; } else { testMeritve.push(izid.hz); }
+      var preostanek = Math.ceil((testKonec - zdaj) / 1000);
+      if (preostanek < 0) { preostanek = 0; }
+      el("gumbTest").innerHTML = "Pojte se " + preostanek + " s";
+      if (zdaj >= testKonec) { koncajTest(); }
+    }
+
+    if (window.requestAnimationFrame) {
+      window.requestAnimationFrame(korak);
+    } else {
+      window.setTimeout(korak, 30);
+    }
+  }
+
+  function pokaziNastavitve(sled) {
+    if (!sled.getSettings) {
+      el("napOdmev").innerHTML = "ni podatka";
+      el("napJakost").innerHTML = "ni podatka";
+      el("napSum").innerHTML = "ni podatka";
+      return;
+    }
+    var n = sled.getSettings();
+    el("napOdmev").innerHTML = (typeof n.echoCancellation === "undefined") ? "ni podatka" : (n.echoCancellation ? "VKLOPLJENA" : "izklopljena");
+    el("napJakost").innerHTML = (typeof n.autoGainControl === "undefined") ? "ni podatka" : (n.autoGainControl ? "VKLOPLJENA" : "izklopljena");
+    el("napSum").innerHTML = (typeof n.noiseSuppression === "undefined") ? "ni podatka" : (n.noiseSuppression ? "VKLOPLJENA" : "izklopljena");
+  }
+
+  function zazeni(tok) {
+    var Kontekst = window.AudioContext || window.webkitAudioContext;
+    if (!Kontekst) {
+      napaka("Ta brskalnik ne pozna Web Audio. Meritev ni mogoca.");
+      return;
+    }
+    kontekst = new Kontekst();
+    if (kontekst.resume) { kontekst.resume(); }
+
+    var vir = kontekst.createMediaStreamSource(tok);
+    analizator = kontekst.createAnalyser();
+    analizator.fftSize = VELIKOST;
+    vir.connect(analizator);
+
+    polje = new Float32Array(VELIKOST);
+    poljeBajt = new Uint8Array(VELIKOST);
+    floatPodprt = (typeof analizator.getFloatTimeDomainData === "function");
+
+    el("napVzorec").innerHTML = kontekst.sampleRate + " Hz";
+    el("napFloat").innerHTML = floatPodprt ? "da" : "ne, uporabljam grobo branje";
+
+    var sledi = tok.getAudioTracks ? tok.getAudioTracks() : [];
+    if (sledi.length > 0) { pokaziNastavitve(sledi[0]); }
+
+    el("gumbVklop").innerHTML = "Mikrofon dela";
+    el("gumbVklop").disabled = true;
+    el("gumbTest").disabled = false;
+
+    tece = true;
+    casStevca = Date.now();
+    korak();
+  }
+
+  function napaka(besedilo) {
+    var o = el("opozorilo");
+    o.innerHTML = besedilo;
+    o.style.display = "block";
+    el("gumbVklop").disabled = false;
+    el("gumbVklop").innerHTML = "Vklopi mikrofon";
+  }
+
+  function vprasajZaMikrofon() {
+    var zahtevno = {
+      audio: {
+        echoCancellation: false,
+        autoGainControl: false,
+        noiseSuppression: false
+      },
+      video: false
+    };
+    var preprosto = { audio: true, video: false };
+
+    function uspeh(tok) { zazeni(tok); }
+
+    function poskusi(omejitve, zadnji) {
+      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        navigator.mediaDevices.getUserMedia(omejitve).then(uspeh)["catch"](function (e) {
+          if (!zadnji) { poskusi(preprosto, true); }
+          else { napaka("Mikrofon ni na voljo. Sporocilo naprave: " + (e && e.name ? e.name : "neznano")); }
+        });
+        return;
+      }
+      var stari = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia;
+      if (!stari) {
+        napaka("Ta brskalnik ne zna odpreti mikrofona.");
+        return;
+      }
+      stari.call(navigator, omejitve, uspeh, function (e) {
+        if (!zadnji) { poskusi(preprosto, true); }
+        else { napaka("Mikrofon ni na voljo."); }
+      });
+    }
+
+    el("gumbVklop").disabled = true;
+    el("gumbVklop").innerHTML = "Cakam na dovoljenje";
+    poskusi(zahtevno, false);
+  }
+
+  el("gumbVklop").onclick = vprasajZaMikrofon;
+
+  el("gumbTest").onclick = function () {
+    if (!tece || testTece) { return; }
+    testTece = true;
+    testMeritve = [];
+    testPrazne = 0;
+    testZacetek = Date.now();
+    testKonec = testZacetek + 5000;
+    el("gumbTest").disabled = true;
+    el("izidStanje").innerHTML = "tece";
+  };
+
+  var varnoMesto = (location.protocol === "https:" || location.hostname === "localhost" || location.hostname === "127.0.0.1");
+  if (!varnoMesto) {
+    napaka("Stran ni odprta prek https. Brskalniki mikrofona v tem primeru ne odprejo. Nalozite stran na GitHub Pages in jo odprite od tam.");
+  }
+})();
+</script>
+
+</body>
+</html>
