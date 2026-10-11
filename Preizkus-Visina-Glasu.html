@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- RAZLICICA-2026-10-11-merilnik -->
+<!-- RAZLICICA-2026-10-11-prag003 -->
 <html lang="sl">
 <head>
 <meta charset="utf-8">
@@ -171,6 +171,7 @@
     <tr><td class="oznaka">Frekvenca</td><td class="vrednost" id="prikazHz">&mdash;</td></tr>
     <tr><td class="oznaka">Meritev na sekundo</td><td class="vrednost" id="prikazHitrost">&mdash;</td></tr>
     <tr><td class="oznaka">Jakost signala</td><td class="vrednost" id="prikazJakost">&mdash;</td></tr>
+    <tr><td class="oznaka">Prag, pod katerim je pretiho</td><td class="vrednost">0,003</td></tr>
   </table>
 </div>
 
@@ -217,6 +218,7 @@
 
   var IMENA = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "H"];
   var VELIKOST = 2048;
+  var PRAG = 0.003;
 
   var kontekst = null;
   var analizator = null;
@@ -269,7 +271,7 @@
       vsota += buf[i] * buf[i];
     }
     var rms = Math.sqrt(vsota / velikost);
-    if (rms < 0.01) { return { hz: -1, rms: rms }; }
+    if (rms < PRAG) { return { hz: -1, rms: rms, razlog: "pretiho" }; }
 
     var r1 = 0;
     var r2 = velikost - 1;
@@ -283,7 +285,7 @@
 
     var odrezan = buf.slice(r1, r2);
     var n = odrezan.length;
-    if (n < 64) { return { hz: -1, rms: rms }; }
+    if (n < 64) { return { hz: -1, rms: rms, razlog: "odsek prekratek" }; }
 
     var c = new Array(n);
     for (i = 0; i < n; i++) { c[i] = 0; }
@@ -301,7 +303,7 @@
     for (i = d; i < n; i++) {
       if (c[i] > najvecja) { najvecja = c[i]; mesto = i; }
     }
-    if (mesto <= 0 || mesto >= n - 1) { return { hz: -1, rms: rms }; }
+    if (mesto <= 0 || mesto >= n - 1) { return { hz: -1, rms: rms, razlog: "vrh na robu" }; }
 
     var t0 = mesto;
     var x1 = c[t0 - 1];
@@ -312,8 +314,10 @@
     if (a) { t0 = t0 - b / (2 * a); }
 
     var hz = vzorcnaFrekvenca / t0;
-    if (hz < 50 || hz > 2000) { return { hz: -1, rms: rms }; }
-    return { hz: hz, rms: rms };
+    if (hz < 50 || hz > 2000) {
+      return { hz: -1, rms: rms, razlog: "izven 50 do 2000 Hz (" + Math.round(hz) + " Hz)" };
+    }
+    return { hz: hz, rms: rms, razlog: "" };
   }
 
   function mediana(sez) {
@@ -327,12 +331,12 @@
 
   function dveDecimalki(x) { return Math.round(x * 100) / 100; }
 
-  function posodobiPrikaz(hz, rms) {
+  function posodobiPrikaz(hz, rms, razlog) {
     if (hz < 0) {
       el("prikazNota").innerHTML = "&mdash;";
       el("prikazCenti").innerHTML = "&nbsp;";
       el("prikazCenti").className = "centi";
-      el("prikazHz").innerHTML = "pretiho";
+      el("prikazHz").innerHTML = razlog;
       el("kazalec").style.left = "50%";
     } else {
       var n = frekvencaVNoto(hz);
@@ -361,10 +365,10 @@
     el("prikazHitrost").innerHTML = hitrost > 0 ? hitrost : "&mdash;";
   }
 
-  function posodobiDnevnik(hz) {
+  function posodobiDnevnik(hz, razlog) {
     var vrstica;
     if (hz < 0) {
-      vrstica = "pretiho";
+      vrstica = razlog;
     } else {
       var n = frekvencaVNoto(hz);
       vrstica = dveDecimalki(hz) + " Hz   " + imeNote(n) + "   " + Math.round(centiOdNote(hz, n)) + " c";
@@ -451,8 +455,8 @@
       casStevca = zdaj;
     }
 
-    posodobiPrikaz(izid.hz, izid.rms);
-    posodobiDnevnik(izid.hz);
+    posodobiPrikaz(izid.hz, izid.rms, izid.razlog);
+    posodobiDnevnik(izid.hz, izid.razlog);
 
     if (testTece) {
       if (izid.hz < 0) { testPrazne++; } else { testMeritve.push(izid.hz); }
@@ -524,40 +528,30 @@
   }
 
   function vprasajZaMikrofon() {
-    var zahtevno = {
-      audio: {
-        echoCancellation: false,
-        autoGainControl: false,
-        noiseSuppression: false
-      },
-      video: false
-    };
-    var preprosto = { audio: true, video: false };
+    // Enako, kot odpirajo mikrofon uveljavljeni spletni uglasevalci:
+    // nicesar ne izklapljamo, da ostane ojacanje brskalnika vklopljeno.
+    var omejitve = { audio: true };
 
     function uspeh(tok) { zazeni(tok); }
 
-    function poskusi(omejitve, zadnji) {
-      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-        navigator.mediaDevices.getUserMedia(omejitve).then(uspeh)["catch"](function (e) {
-          if (!zadnji) { poskusi(preprosto, true); }
-          else { napaka("Mikrofon ni na voljo. Sporocilo naprave: " + (e && e.name ? e.name : "neznano")); }
-        });
-        return;
-      }
-      var stari = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia;
-      if (!stari) {
-        napaka("Ta brskalnik ne zna odpreti mikrofona.");
-        return;
-      }
-      stari.call(navigator, omejitve, uspeh, function (e) {
-        if (!zadnji) { poskusi(preprosto, true); }
-        else { napaka("Mikrofon ni na voljo."); }
-      });
-    }
-
     el("gumbVklop").disabled = true;
     el("gumbVklop").innerHTML = "Cakam na dovoljenje";
-    poskusi(zahtevno, false);
+
+    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+      navigator.mediaDevices.getUserMedia(omejitve).then(uspeh)["catch"](function (e) {
+        napaka("Mikrofon ni na voljo. Sporocilo naprave: " + (e && e.name ? e.name : "neznano"));
+      });
+      return;
+    }
+
+    var stari = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia;
+    if (!stari) {
+      napaka("Ta brskalnik ne zna odpreti mikrofona.");
+      return;
+    }
+    stari.call(navigator, omejitve, uspeh, function () {
+      napaka("Mikrofon ni na voljo.");
+    });
   }
 
   el("gumbVklop").onclick = vprasajZaMikrofon;
